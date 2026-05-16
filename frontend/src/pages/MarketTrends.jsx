@@ -2,145 +2,106 @@ import { useEffect, useMemo, useState } from 'react';
 import TrendChart from '../components/TrendChart.jsx';
 import AnalyticsCard from '../components/AnalyticsCard.jsx';
 import Loader from '../components/Loader.jsx';
+import LivePotatoPrice from '../components/LivePotatoPrice.jsx';
 import { getMarketPrices } from '../api/market.js';
+import { extractMarketPriceList } from '../utils/normalize.js';
 
-// Fallback datasets used if the backend is offline or returns nothing.
-const fallbackDatasets = {
-  Tomato: [
-    { date: 'Week 1', price: 1650, predicted: 1700 },
-    { date: 'Week 2', price: 1720, predicted: 1750 },
-    { date: 'Week 3', price: 1810, predicted: 1840 },
-    { date: 'Week 4', price: 1900, predicted: 1980 },
-    { date: 'Week 5', price: 1980, predicted: 2080 },
-    { date: 'Week 6', price: 2050, predicted: 2150 },
-  ],
-  Onion: [
-    { date: 'Week 1', price: 1200, predicted: 1240 },
-    { date: 'Week 2', price: 1280, predicted: 1300 },
-    { date: 'Week 3', price: 1320, predicted: 1360 },
-    { date: 'Week 4', price: 1390, predicted: 1420 },
-    { date: 'Week 5', price: 1410, predicted: 1450 },
-    { date: 'Week 6', price: 1460, predicted: 1500 },
-  ],
-  Wheat: [
-    { date: 'Week 1', price: 2200, predicted: 2220 },
-    { date: 'Week 2', price: 2240, predicted: 2260 },
-    { date: 'Week 3', price: 2260, predicted: 2280 },
-    { date: 'Week 4', price: 2300, predicted: 2310 },
-    { date: 'Week 5', price: 2320, predicted: 2340 },
-    { date: 'Week 6', price: 2350, predicted: 2370 },
-  ],
+// Convert ISO date "2026-04-12" -> "12 Apr"
+const fmtDate = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
 };
 
-// Normalize whatever the backend returns into [{ date, price, predicted? }].
-// Accepts shapes like:
-//   { prices: [...] }
-//   { data: [...] }
-//   { rows: [...] }
-//   [ ... ]  (bare array)
-// Each row may use: date|reported_date|day, price|modal_price|avg_price,
-// predicted|predicted_price.
-function normalizeRows(payload) {
-  const list =
-    (Array.isArray(payload) && payload) ||
-    payload?.prices ||
-    payload?.data ||
-    payload?.rows ||
-    [];
-  return list
-    .map((r) => ({
-      date: r.date || r.reported_date || r.day || r.label || '',
-      price: Number(r.price ?? r.modal_price ?? r.avg_price ?? 0),
-      predicted: r.predicted ?? r.predicted_price ?? null,
-    }))
-    .filter((r) => r.date && Number.isFinite(r.price));
-}
-
-// Build the list of available crops from the API response, falling back to
-// the hardcoded set.
-function extractCropNames(payload) {
-  if (Array.isArray(payload?.crops) && payload.crops.length) return payload.crops;
-  const list = (Array.isArray(payload) && payload) || payload?.prices || payload?.data || [];
-  const set = new Set(list.map((r) => r.crop || r.crop_name).filter(Boolean));
-  return set.size ? Array.from(set) : Object.keys(fallbackDatasets);
-}
-
 export default function MarketTrends() {
-  const [crop, setCrop] = useState('Tomato');
-  const [availableCrops, setAvailableCrops] = useState(Object.keys(fallbackDatasets));
-  const [series, setSeries] = useState([]);
+  const [allRows, setAllRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [usingFallback, setUsingFallback] = useState(false);
 
-  // Initial fetch — let the backend tell us which crops exist.
+  const [commodity, setCommodity] = useState('');
+  const [district, setDistrict] = useState('');
+
+  // Initial load: pull a generous page of rows and derive commodities/districts.
   useEffect(() => {
     let active = true;
     (async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const { data } = await getMarketPrices();
+        const { data } = await getMarketPrices({ limit: 500 });
         if (!active) return;
-        const crops = extractCropNames(data);
-        setAvailableCrops(crops);
-        if (!crops.includes(crop)) setCrop(crops[0]);
-      } catch {
-        // Stay on fallback list.
-      }
-    })();
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Fetch the per-crop series whenever the selected crop changes.
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(null);
-    setUsingFallback(false);
-
-    (async () => {
-      try {
-        const { data } = await getMarketPrices({ crop });
-        if (!active) return;
-        const rows = normalizeRows(data);
-        if (rows.length === 0) {
-          setSeries(fallbackDatasets[crop] || []);
-          setUsingFallback(true);
-        } else {
-          setSeries(rows);
-        }
+        const rows = extractMarketPriceList(data);
+        setAllRows(rows);
+        const firstCommodity = rows[0]?.commodity || '';
+        setCommodity((prev) => prev || firstCommodity);
       } catch (err) {
         if (!active) return;
         setError(
           err.response?.data?.message ||
-            'Could not load market prices. Showing sample data.'
+            err.response?.data?.error ||
+            'Could not load market prices. Is the seed loaded?'
         );
-        setSeries(fallbackDatasets[crop] || []);
-        setUsingFallback(true);
       } finally {
         if (active) setLoading(false);
       }
     })();
-
     return () => {
       active = false;
     };
-  }, [crop]);
+  }, []);
+
+  const commodities = useMemo(
+    () => Array.from(new Set(allRows.map((r) => r.commodity).filter(Boolean))).sort(),
+    [allRows]
+  );
+  const districts = useMemo(
+    () =>
+      Array.from(
+        new Set(allRows.filter((r) => !commodity || r.commodity === commodity).map((r) => r.district))
+      )
+        .filter(Boolean)
+        .sort(),
+    [allRows, commodity]
+  );
+
+  // Build the chart series for the selected commodity + optional district.
+  // Multiple markets/varieties report on the same day -> average modal price per day.
+  const series = useMemo(() => {
+    if (!commodity) return [];
+    const filtered = allRows.filter(
+      (r) =>
+        r.commodity === commodity &&
+        (!district || r.district === district)
+    );
+    const byDate = new Map();
+    for (const r of filtered) {
+      if (!r.price_date) continue;
+      const key = String(r.price_date).slice(0, 10);
+      const cur = byDate.get(key) || { sum: 0, n: 0 };
+      cur.sum += r.modal_price;
+      cur.n += 1;
+      byDate.set(key, cur);
+    }
+    return Array.from(byDate.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, v]) => ({
+        date: fmtDate(date),
+        rawDate: date,
+        price: Math.round(v.sum / v.n),
+      }));
+  }, [allRows, commodity, district]);
 
   const latest = series[series.length - 1];
-  const trendLabel = useMemo(() => {
-    if (!latest) return '—';
-    if (latest.predicted != null) {
-      return latest.predicted > latest.price ? '⬆ Rising' : '⬇ Falling';
-    }
-    if (series.length >= 2) {
-      const prev = series[series.length - 2].price;
-      return latest.price >= prev ? '⬆ Rising' : '⬇ Falling';
-    }
-    return '—';
-  }, [series, latest]);
+  const prev = series[series.length - 2];
+  const trendLabel = !latest
+    ? '—'
+    : prev
+      ? latest.price >= prev.price
+        ? '⬆ Rising'
+        : '⬇ Falling'
+      : '—';
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -148,53 +109,89 @@ export default function MarketTrends() {
         <div>
           <h1 className="text-2xl font-bold text-krishi-900">Market Trends</h1>
           <p className="text-sm text-gray-600">
-            Live mandi prices from{' '}
-            <code className="rounded bg-krishi-100 px-1">/api/market-prices</code>.
+            Live mandi prices from <code className="rounded bg-krishi-100 px-1">/api/market-prices</code> ·{' '}
+            {allRows.length} rows · Source: Agmarknet (Maharashtra)
           </p>
         </div>
-        {usingFallback && !loading && (
-          <span className="badge bg-amber-100 text-amber-800">Sample data</span>
-        )}
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {availableCrops.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCrop(c)}
-            className={`badge cursor-pointer px-3 py-1 ${
-              crop === c ? 'bg-krishi-600 text-white' : 'bg-krishi-100 text-krishi-700'
-            }`}
-          >
-            {c}
-          </button>
-        ))}
       </div>
 
       {error && (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
+          <p className="mt-1 text-xs text-red-500">
+            Run <code className="rounded bg-white px-1">npm run seed:prices</code> in the backend folder.
+          </p>
         </div>
       )}
 
+      {/* Live daily feed from data.gov.in — independent of the seeded DB. */}
+      <div className="mt-4">
+        <LivePotatoPrice />
+      </div>
+
       {loading ? (
-        <Loader label={`Loading ${crop} prices...`} />
+        <Loader label="Loading market prices..." />
       ) : (
         <>
+          {/* Commodity chips */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {commodities.length === 0 ? (
+              <span className="text-sm text-gray-500">No commodities found.</span>
+            ) : (
+              commodities.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => {
+                    setCommodity(c);
+                    setDistrict('');
+                  }}
+                  className={`badge cursor-pointer px-3 py-1 ${
+                    commodity === c ? 'bg-krishi-600 text-white' : 'bg-krishi-100 text-krishi-700'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))
+            )}
+          </div>
+
+          {/* District filter */}
+          {districts.length > 0 && (
+            <div className="mt-3 flex items-center gap-2 text-sm">
+              <label className="text-gray-600">District:</label>
+              <select
+                className="input max-w-xs"
+                value={district}
+                onChange={(e) => setDistrict(e.target.value)}
+              >
+                <option value="">All districts</option>
+                {districts.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <AnalyticsCard
-              label="Latest price"
-              value={latest ? `₹ ${latest.price}` : '—'}
+              label="Latest modal price"
+              value={latest ? `₹ ${latest.price.toLocaleString()} / qtl` : '—'}
+              hint={latest ? `as of ${fmtDate(latest.rawDate)}` : ''}
             />
             <AnalyticsCard
-              label="Predicted next"
-              value={latest?.predicted != null ? `₹ ${latest.predicted}` : '—'}
+              label="Data points"
+              value={series.length}
+              hint={district ? `for ${district}` : 'across all districts'}
               accent="soil"
             />
             <AnalyticsCard label="Trend" value={trendLabel} accent="amber" />
           </div>
+
           <div className="mt-6">
-            <TrendChart data={series} title={`${crop} — price outlook`} />
+            <TrendChart
+              data={series}
+              title={`${commodity || 'Commodity'}${district ? ` — ${district}` : ''} (modal price)`}
+            />
           </div>
         </>
       )}

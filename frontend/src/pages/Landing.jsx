@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import LivePotatoPrice from '../components/LivePotatoPrice.jsx';
 
 const features = [
   {
@@ -46,37 +47,25 @@ export default function Landing() {
             </div>
             <div className="mt-8 grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold text-krishi-700">+18%</p>
-                <p className="text-xs text-gray-500">avg. profit lift</p>
+                <p className="text-2xl font-bold text-krishi-700">128</p>
+                <p className="text-xs text-gray-500">mandi data points</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-krishi-700">1.2k</p>
-                <p className="text-xs text-gray-500">crops listed</p>
+                <p className="text-2xl font-bold text-krishi-700">6 mo</p>
+                <p className="text-xs text-gray-500">price history</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-krishi-700">320+</p>
-                <p className="text-xs text-gray-500">buyers connected</p>
+                <p className="text-2xl font-bold text-krishi-700">1</p>
+                <p className="text-xs text-gray-500">commodity (Potato)</p>
               </div>
             </div>
           </div>
           <div className="relative flex items-center justify-center">
-            <div className="card w-full max-w-md">
-              <p className="text-sm text-gray-500">Today's recommendation</p>
-              <h3 className="mt-1 text-xl font-bold text-krishi-800">Tomato — Pune Mandi</h3>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-gray-500">Current price</p>
-                  <p className="font-semibold">₹ 1,820 / qtl</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Forecast (7d)</p>
-                  <p className="font-semibold text-krishi-700">₹ 2,150 / qtl</p>
-                </div>
-              </div>
-              <div className="mt-4 rounded-lg bg-krishi-100 p-3">
-                <p className="text-sm font-semibold text-krishi-800">📌 Recommendation: HOLD</p>
-                <p className="text-xs text-krishi-700">Demand rising; expect ~18% upside.</p>
-              </div>
+            <div className="w-full max-w-md">
+              <LivePotatoPrice />
+              <p className="mt-2 text-center text-[11px] text-gray-500">
+                Live daily price feed via data.gov.in · refreshes every 10 min.
+              </p>
             </div>
           </div>
         </div>

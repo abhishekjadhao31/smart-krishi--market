@@ -4,6 +4,7 @@ import CropCard from '../components/CropCard.jsx';
 import Loader from '../components/Loader.jsx';
 import { listCrops } from '../api/crops.js';
 import { searchForBuyer } from '../api/buyers.js';
+import { extractCropList } from '../utils/normalize.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function BuyerDashboard() {
@@ -18,7 +19,7 @@ export default function BuyerDashboard() {
       const { data } = payload && Object.values(payload).some(Boolean)
         ? await searchForBuyer(payload)
         : await listCrops();
-      setCrops(data.crops || []);
+      setCrops(extractCropList(data));
     } catch {
       setCrops([]);
     } finally {
