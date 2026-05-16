@@ -21,7 +21,11 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "maharashtra_prices.csv"
+ML_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = ML_ROOT.parent
+LEGACY_DATA_FILE = ML_ROOT / "data" / "maharashtra_prices.csv"
+CLEANED_DATA_FILE = REPO_ROOT / "database" / "cleaned" / "maharashtra_mandi_cleaned.csv"
+DATA_FILE = CLEANED_DATA_FILE if CLEANED_DATA_FILE.exists() else LEGACY_DATA_FILE
 
 
 def _to_number(v) -> Optional[float]:
@@ -52,25 +56,22 @@ def _to_date(v) -> Optional[pd.Timestamp]:
         return None
 
 
-def load_raw(csv_path: Path = DATA_FILE) -> pd.DataFrame:
+def load_raw(csv_path: Optional[Path] = None) -> pd.DataFrame:
     """Read the Agmarknet CSV and return a clean DataFrame.
 
-    The first line of the file is a "report title" row; the real header
-    starts with `State,District,Market`. We locate it and parse from there.
+    Prefers the new cleaned pipeline CSV. Falls back to the legacy potato-only
+    CSV so existing demos still boot before the first ingestion run.
     """
+    csv_path = csv_path or (CLEANED_DATA_FILE if CLEANED_DATA_FILE.exists() else LEGACY_DATA_FILE)
     if not csv_path.exists():
         raise FileNotFoundError(f"CSV not found: {csv_path}")
 
     text = csv_path.read_text(encoding="utf-8", errors="ignore").splitlines()
     header_idx = next(
         (i for i, line in enumerate(text) if line.lower().startswith("state,district,market")),
-        None,
+        0,
     )
-    if header_idx is None:
-        raise ValueError("Could not find header row in CSV")
-
     df = pd.read_csv(csv_path, skiprows=header_idx)
-    # Normalize columns
     df.columns = [c.strip() for c in df.columns]
     rename = {
         "State": "state",
@@ -87,8 +88,16 @@ def load_raw(csv_path: Path = DATA_FILE) -> pd.DataFrame:
         "Arrival Quantity": "arrival_qty",
         "Arrival Unit": "arrival_unit",
         "Arrival Date": "arrival_date",
+        "price_date": "arrival_date",
+        "arrivals": "arrival_qty",
+        "unit": "arrival_unit",
     }
     df = df.rename(columns=rename)
+
+    if "arrival_qty" not in df.columns:
+        df["arrival_qty"] = np.nan
+    if "arrival_unit" not in df.columns:
+        df["arrival_unit"] = ""
 
     for col in ("min_price", "max_price", "modal_price", "arrival_qty"):
         if col in df.columns:
@@ -96,6 +105,11 @@ def load_raw(csv_path: Path = DATA_FILE) -> pd.DataFrame:
 
     df["arrival_date"] = df["arrival_date"].map(_to_date)
     df = df.dropna(subset=["modal_price", "arrival_date", "commodity"])
+    for text_col in ("state", "district", "market", "commodity", "variety"):
+        if text_col in df.columns:
+            df[text_col] = df[text_col].fillna("").astype(str).str.strip()
+    if df.empty and csv_path == CLEANED_DATA_FILE and LEGACY_DATA_FILE.exists():
+        return load_raw(LEGACY_DATA_FILE)
     df = df.reset_index(drop=True)
     return df
 
@@ -155,6 +169,20 @@ def build_features(
     out["commodity_te"] = df["commodity"].map(encoders["commodity"]).fillna(encoders["_global_mean"])
     out["district_te"] = df["district"].map(encoders["district"]).fillna(encoders["_global_mean"])
     out["market_te"] = df["market"].map(encoders["market"]).fillna(encoders["_global_mean"])
+    engineered_defaults = {
+        "day_of_week": arrival.dt.dayofweek,
+        "lag_1_price": df.get("modal_price", pd.Series(0, index=df.index)),
+        "lag_7_price": df.get("modal_price", pd.Series(0, index=df.index)),
+        "rolling_avg_7": df.get("modal_price", pd.Series(0, index=df.index)),
+        "rolling_avg_30": df.get("modal_price", pd.Series(0, index=df.index)),
+        "price_trend": pd.Series(0, index=df.index),
+        "arrivals_trend": pd.Series(0, index=df.index),
+    }
+    for col, default in engineered_defaults.items():
+        if col in df.columns:
+            out[col] = pd.to_numeric(df[col], errors="coerce").fillna(default)
+        else:
+            out[col] = default
     return out, encoders, min_date
 
 
@@ -172,8 +200,9 @@ def filter_history(
     cur = df.copy()
     if commodity:
         m = cur["commodity"].str.lower() == commodity.strip().lower()
-        if m.any():
-            cur = cur[m]
+        if not m.any():
+            return cur.iloc[0:0].copy()
+        cur = cur[m]
     if market:
         m = cur["market"].str.lower().str.contains(market.strip().lower(), na=False)
         if m.any():

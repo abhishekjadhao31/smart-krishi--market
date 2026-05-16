@@ -14,7 +14,7 @@ from typing import Optional
 import joblib
 import numpy as np
 
-from .preprocess import build_features, load_raw
+from .preprocess import CLEANED_DATA_FILE, build_features, load_raw
 
 MODEL_PATH = Path(__file__).resolve().parent.parent / "model.pkl"
 
@@ -27,7 +27,8 @@ def train_model(force: bool = False) -> dict:
     If model.pkl already exists and force=False, just loads + returns it.
     """
     if MODEL_PATH.exists() and not force:
-        return joblib.load(MODEL_PATH)
+        if not CLEANED_DATA_FILE.exists() or MODEL_PATH.stat().st_mtime >= CLEANED_DATA_FILE.stat().st_mtime:
+            return joblib.load(MODEL_PATH)
 
     df = load_raw()
     if df.empty:
