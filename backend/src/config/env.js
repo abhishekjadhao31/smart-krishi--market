@@ -24,6 +24,7 @@ const env = {
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:3000',
 
   ML_SERVICE_URL: process.env.ML_SERVICE_URL || 'http://localhost:8000',
+  AGMARKNET_API_KEY: process.env.AGMARKNET_API_KEY || process.env.VITE_AGMARKNET_API_KEY || '',
 
   UPLOAD_DIR: process.env.UPLOAD_DIR || 'uploads',
   MAX_UPLOAD_SIZE_MB: parseInt(process.env.MAX_UPLOAD_SIZE_MB, 10) || 5,

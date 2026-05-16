@@ -1,0 +1,383 @@
+// Smart Krishi Market - Production Prisma Schema
+// Includes farmer, buyer, matching, logistics, and messaging models
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// EXISTING MODELS (migrated from raw SQL)
+// ============================================================================
+
+/// User model for authentication and authorization
+/// Roles: farmer, buyer, admin
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(100)
+  email     String    @unique @db.VarChar(255)
+  phone     String?   @db.VarChar(20)
+  passwordHash String @map("password_hash")
+  role      UserRole  @default(FARMER)
+  state     String?   @db.VarChar(100)
+  district  String?   @db.VarChar(100)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  cropListings      CropListing[]
+  sentMessages      Message[]     @relation("sentMessages")
+  receivedMessages  Message[]     @relation("receivedMessages")
+  buyerRequests     BuyerRequest[]
+  buyerProfile      BuyerProfile?
+  matches           Match[]       @relation("farmerMatches")
+  transportBookings TransportBooking[]
+
+  @@index([role])
+  @@index([email])
+  @@map("users")
+}
+
+enum UserRole {
+  FARMER @map("farmer")
+  BUYER  @map("buyer")
+  ADMIN  @map("admin")
+}
+
+/// Crop listing by farmers
+model CropListing {
+  id               Int      @id @default(autoincrement())
+  farmerId         Int      @map("farmer_id")
+  cropName         String   @map("crop_name") @db.VarChar(100)
+  variety          String?  @db.VarChar(100)
+  quantityKg       Decimal  @map("quantity_kg") 
+  pricePerKg       Decimal? @map("price_per_kg") 
+  state            String?  @db.VarChar(100)
+  district         String?  @db.VarChar(100)
+  market           String?  @db.VarChar(100)
+  harvestDate      DateTime? @map("harvest_date")
+  storageAvailable Boolean  @default(false) @map("storage_available")
+  description      String?
+  imageUrl         String?  @map("image_url")
+  status           ListingStatus @default(AVAILABLE)
+  
+  // Geolocation
+  latitude         Decimal? 
+  longitude        Decimal? 
+  
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  farmer           User     @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  messages         Message[]
+  matches          Match[]  @relation("listingMatches")
+  transportBooking TransportBooking?
+
+  @@index([farmerId])
+  @@index([cropName(sort: Desc)])
+  @@index([state])
+  @@index([status])
+  @@map("crops")
+}
+
+enum ListingStatus {
+  AVAILABLE @map("available")
+  SOLD      @map("sold")
+  HOLD      @map("hold")
+}
+
+/// Market price historical data from Agmarknet
+model MarketPrice {
+  id              Int      @id @default(autoincrement())
+  state           String?  @db.VarChar(100)
+  district        String?  @db.VarChar(100)
+  market          String?  @db.VarChar(100)
+  commodity       String   @db.VarChar(100)
+  variety         String?  @db.VarChar(100)
+  minPrice        Decimal? @map("min_price") 
+  maxPrice        Decimal? @map("max_price") 
+  modalPrice      Decimal? @map("modal_price") 
+  priceDate       DateTime @map("price_date")
+  source          String?  @default("agmarknet") @db.VarChar(100)
+  
+  // Additional computed fields for ML
+  arrivals        Decimal? 
+  unit            String?  @db.VarChar(50)
+  dayOfWeek       Int?     @map("day_of_week")
+  month           Int?
+  lag1Price       Decimal? @map("lag_1_price") 
+  lag7Price       Decimal? @map("lag_7_price") 
+  rollingAvg7     Decimal? @map("rolling_avg_7") 
+  rollingAvg30    Decimal? @map("rolling_avg_30") 
+  priceTrend      Decimal? @map("price_trend") 
+  arrivalsTrend   Decimal? @map("arrivals_trend") 
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([commodity(sort: Desc)])
+  @@index([state])
+  @@index([district])
+  @@index([market])
+  @@index([priceDate(sort: Desc)])
+  @@map("market_prices")
+}
+
+/// Messages between farmers and buyers
+model Message {
+  id        Int      @id @default(autoincrement())
+  fromUserId Int     @map("from_user_id")
+  toUserId  Int      @map("to_user_id")
+  cropId    Int?     @map("crop_id")
+  subject   String?  @db.VarChar(255)
+  body      String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  from      User     @relation("sentMessages", fields: [fromUserId], references: [id], onDelete: Cascade)
+  to        User     @relation("receivedMessages", fields: [toUserId], references: [id], onDelete: Cascade)
+  crop      CropListing? @relation(fields: [cropId], references: [id], onDelete: SetNull)
+
+  @@index([toUserId, isRead])
+  @@index([fromUserId])
+  @@index([cropId])
+  @@index([createdAt(sort: Desc)])
+  @@map("messages")
+}
+
+// ============================================================================
+// NEW MODELS FOR MATCHING SYSTEM
+// ============================================================================
+
+/// Buyer profile with preferences and location
+model BuyerProfile {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  companyName     String   @db.VarChar(255)
+  buyerType       BuyerType
+  
+  // Location
+  latitude        Decimal  
+  longitude       Decimal  
+  city            String?  @db.VarChar(100)
+  state           String   @db.VarChar(100)
+  district        String   @db.VarChar(100)
+  
+  // Preferences
+  preferredCrops  String[]  // JSON array of crop names
+  minQuantity     Decimal?  
+  maxPrice        Decimal?  
+  coldStorageNeeded Boolean @default(false)
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("buyer_profiles")
+}
+
+enum BuyerType {
+  RETAIL          @map("retail")
+  WHOLESALE       @map("wholesale")
+  RESTAURANT      @map("restaurant")
+  FOOD_PROCESSOR  @map("food_processor")
+  EXPORTER        @map("exporter")
+  TRADER          @map("trader")
+}
+
+/// Buyer's crop request (buyers specify what they need)
+model BuyerRequest {
+  id              Int      @id @default(autoincrement())
+  buyerId         Int      @map("buyer_id")
+  cropName        String   @map("crop_name") @db.VarChar(100)
+  quantityNeeded  Decimal  @map("quantity_needed") 
+  maxPrice        Decimal  @map("max_price") 
+  deliveryDate    DateTime @map("delivery_date")
+  urgency         Urgency  @default(MEDIUM)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  buyer           User     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  matches         Match[]  @relation("requestMatches")
+
+  @@index([buyerId])
+  @@index([cropName])
+  @@index([createdAt])
+  @@map("buyer_requests")
+}
+
+enum Urgency {
+  LOW     @map("low")
+  MEDIUM  @map("medium")
+  HIGH    @map("high")
+}
+
+/// AI-generated match between crop listing and buyer request
+model Match {
+  id              Int      @id @default(autoincrement())
+  listingId       Int      @map("listing_id")
+  buyerRequestId  Int      @map("buyer_request_id")
+  farmerId        Int      @map("farmer_id")
+  
+  // Scoring
+  cropMatchScore      Decimal @map("crop_match_score") 
+  distanceScore       Decimal @map("distance_score") 
+  priceScore          Decimal @map("price_score") 
+  quantityScore       Decimal @map("quantity_score") 
+  urgencyScore        Decimal @map("urgency_score") 
+  totalScore          Decimal @map("total_score") 
+  
+  // Distance
+  distanceKm          Decimal @map("distance_km") 
+  
+  // Additional metadata
+  matchReason         String?
+  status              MatchStatus @default(PENDING)
+  
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  listing             CropListing @relation("listingMatches", fields: [listingId], references: [id], onDelete: Cascade)
+  buyerRequest        BuyerRequest @relation("requestMatches", fields: [buyerRequestId], references: [id], onDelete: Cascade)
+  farmer              User @relation("farmerMatches", fields: [farmerId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([buyerRequestId])
+  @@index([farmerId])
+  @@index([totalScore(sort: Desc)])
+  @@index([status])
+  @@index([createdAt])
+  @@map("matches")
+}
+
+enum MatchStatus {
+  PENDING         @map("pending")
+  ACCEPTED        @map("accepted")
+  REJECTED        @map("rejected")
+  COMPLETED       @map("completed")
+}
+
+// ============================================================================
+// LOGISTICS MODELS
+// ============================================================================
+
+/// Logistics partner (truck owner, delivery service)
+model LogisticsPartner {
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(255)
+  vehicleType     VehicleType @map("vehicle_type")
+  capacityKg      Decimal  @map("capacity_kg") 
+  phone           String   @db.VarChar(20)
+  
+  // Location
+  latitude        Decimal  
+  longitude       Decimal  
+  city            String?  @db.VarChar(100)
+  state           String   @db.VarChar(100)
+  
+  // Features
+  coldStorageSupported Boolean @map("cold_storage_supported") @default(false)
+  available       Boolean  @default(true)
+  ratePerKm       Decimal  @map("rate_per_km") 
+  loadingCharges  Decimal  @map("loading_charges")  @default(500)
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  transportBookings TransportBooking[]
+
+  @@index([vehicleType])
+  @@index([state])
+  @@index([available])
+  @@map("logistics_partners")
+}
+
+enum VehicleType {
+  SMALL_TRUCK      @map("small_truck")
+  MEDIUM_TRUCK     @map("medium_truck")
+  LARGE_TRUCK      @map("large_truck")
+  CONTAINER        @map("container")
+  REFRIGERATED     @map("refrigerated")
+  PICKUP           @map("pickup")
+}
+
+/// Transport booking (actual shipment)
+model TransportBooking {
+  id              Int      @id @default(autoincrement())
+  listingId       Int      @unique @map("listing_id")
+  logisticsId     Int      @map("logistics_id")
+  farmerId        Int      @map("farmer_id")
+  
+  // Routing
+  pickupLatitude    Decimal @map("pickup_latitude") 
+  pickupLongitude   Decimal @map("pickup_longitude") 
+  dropLatitude      Decimal @map("drop_latitude") 
+  dropLongitude     Decimal @map("drop_longitude") 
+  
+  // Logistics details
+  distanceKm      Decimal  @map("distance_km") 
+  estimatedCost   Decimal  @map("estimated_cost") 
+  actualCost      Decimal? @map("actual_cost") 
+  
+  // Timeline
+  pickupDate      DateTime @map("pickup_date")
+  deliveryDate    DateTime @map("delivery_date")
+  actualPickupDate DateTime? @map("actual_pickup_date")
+  actualDeliveryDate DateTime? @map("actual_delivery_date")
+  
+  // Status
+  status          BookingStatus @default(PENDING)
+  notes           String?
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  listing         CropListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  logistics       LogisticsPartner @relation(fields: [logisticsId], references: [id], onDelete: Restrict)
+  farmer          User @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([logisticsId])
+  @@index([farmerId])
+  @@index([status])
+  @@index([pickupDate])
+  @@map("transport_bookings")
+}
+
+enum BookingStatus {
+  PENDING         @map("pending")
+  CONFIRMED       @map("confirmed")
+  IN_TRANSIT      @map("in_transit")
+  DELIVERED       @map("delivered")
+  CANCELLED       @map("cancelled")
+}
+
+// ============================================================================
+// AI/ML AUDIT LOGS
+// ============================================================================
+
+model MatchingLog {
+  id              Int      @id @default(autoincrement())
+  buyerRequestId  Int      @map("buyer_request_id")
+  listingId       Int?     @map("listing_id")
+  algorithm       String   @db.VarChar(100)
+  scores          Json
+  decisionReason  String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([buyerRequestId])
+  @@index([createdAt])
+  @@map("matching_logs")
+}

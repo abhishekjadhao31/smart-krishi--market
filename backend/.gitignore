@@ -10,3 +10,5 @@ uploads/
 coverage/
 .DS_Store
 *.log
+
+/src/generated/prisma

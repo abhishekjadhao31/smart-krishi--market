@@ -5,7 +5,7 @@ const { query } = require('../config/db');
 const SELECT_FIELDS = `
   c.id, c.farmer_id, c.crop_name, c.variety, c.quantity_kg, c.price_per_kg,
   c.state, c.district, c.market, c.harvest_date, c.storage_available,
-  c.description, c.image_url, c.status, c.created_at, c.updated_at,
+  c.description, c.image_url, c.latitude, c.longitude, c.status, c.created_at, c.updated_at,
   u.name AS farmer_name, u.phone AS farmer_phone, u.email AS farmer_email
 `;
 

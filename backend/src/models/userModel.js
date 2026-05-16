@@ -31,4 +31,20 @@ async function create({ name, email, phone, passwordHash, role, state, district 
   return rows[0];
 }
 
-module.exports = { findByEmail, findById, create };
+async function updateByEmail(email, { name, phone, passwordHash, role, state, district }) {
+  const { rows } = await query(
+    `UPDATE users
+        SET name = $1,
+            phone = $2,
+            password_hash = $3,
+            role = $4,
+            state = $5,
+            district = $6
+      WHERE email = $7
+      RETURNING ${PUBLIC_COLUMNS}`,
+    [name, phone || null, passwordHash, role, state || null, district || null, email]
+  );
+  return rows[0] || null;
+}
+
+module.exports = { findByEmail, findById, create, updateByEmail };

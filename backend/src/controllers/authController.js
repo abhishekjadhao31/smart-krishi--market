@@ -18,20 +18,29 @@ function publicUser(u) {
 
 const register = asyncHandler(async (req, res) => {
   const { name, email, password, role, phone, state, district } = req.body;
-
   const existing = await userModel.findByEmail(email);
-  if (existing) throw ApiError.conflict('Email already registered');
 
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-  const user = await userModel.create({
-    name,
-    email,
-    phone,
-    passwordHash,
-    role,
-    state,
-    district,
-  });
+  const user = existing
+    ? await userModel.updateByEmail(email, {
+        name,
+        phone,
+        passwordHash,
+        role,
+        state,
+        district,
+      })
+    : await userModel.create({
+        name,
+        email,
+        phone,
+        passwordHash,
+        role,
+        state,
+        district,
+      });
+
+  if (!user) throw ApiError.badRequest('Could not save account');
 
   const token = signToken({ sub: user.id, role: user.role, email: user.email });
   res.status(201).json({ user: publicUser(user), token });
@@ -41,8 +50,16 @@ const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const user = await userModel.findByEmail(email);
   if (!user) throw ApiError.unauthorized('Invalid email or password');
+  if (!user.password_hash || typeof user.password_hash !== 'string') {
+    throw ApiError.unauthorized('Invalid email or password');
+  }
 
-  const ok = await bcrypt.compare(password, user.password_hash);
+  let ok = false;
+  try {
+    ok = await bcrypt.compare(password, user.password_hash);
+  } catch (_err) {
+    throw ApiError.unauthorized('Invalid email or password');
+  }
   if (!ok) throw ApiError.unauthorized('Invalid email or password');
 
   const token = signToken({ sub: user.id, role: user.role, email: user.email });
