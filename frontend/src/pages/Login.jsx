@@ -20,7 +20,7 @@ export default function Login() {
       const dest = from || (user.role === 'farmer' ? '/farmer' : '/buyer');
       navigate(dest, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Check your credentials.');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Login failed. Check your credentials.');
     }
   };
 

@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import TrendChart from '../components/TrendChart.jsx';
 import AnalyticsCard from '../components/AnalyticsCard.jsx';
 import Loader from '../components/Loader.jsx';
-import LivePotatoPrice from '../components/LivePotatoPrice.jsx';
+import LiveMandiPrice from '../components/LiveMandiPrice.jsx';
 import { getMarketPrices } from '../api/market.js';
 import { extractMarketPriceList } from '../utils/normalize.js';
+import { LIVE_CARD_COMMODITIES } from '../config/commodities.js';
 
 // Convert ISO date "2026-04-12" -> "12 Apr"
 const fmtDate = (iso) => {
@@ -119,14 +120,16 @@ export default function MarketTrends() {
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
           <p className="mt-1 text-xs text-red-500">
-            Run <code className="rounded bg-white px-1">npm run seed:prices</code> in the backend folder.
+            Run the mandi fetch, clean, and seed pipeline in the backend folder.
           </p>
         </div>
       )}
 
       {/* Live daily feed from data.gov.in — independent of the seeded DB. */}
-      <div className="mt-4">
-        <LivePotatoPrice />
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        {LIVE_CARD_COMMODITIES.map((c) => (
+          <LiveMandiPrice key={c} commodity={c} district="Mumbai" />
+        ))}
       </div>
 
       {loading ? (

@@ -12,8 +12,8 @@ export function normalizeCrop(raw) {
     quantity_kg: Number(raw.quantity_kg ?? raw.quantityKg ?? 0) || 0,
     // Backend stores price_per_kg; old UI referred to expected_price for ₹/qtl.
     // We expose both for component convenience.
-    price_per_kg: raw.price_per_kg ?? raw.pricePerKg ?? null,
-    expected_price: raw.price_per_kg ?? raw.pricePerKg ?? null,
+    price_per_kg: raw.price_per_kg != null ? Number(raw.price_per_kg) : raw.pricePerKg != null ? Number(raw.pricePerKg) : null,
+    expected_price: raw.price_per_kg != null ? Number(raw.price_per_kg) : raw.pricePerKg != null ? Number(raw.pricePerKg) : null,
     state: raw.state ?? '',
     district: raw.district ?? '',
     market: raw.market ?? '',
@@ -21,6 +21,8 @@ export function normalizeCrop(raw) {
     location:
       raw.location ??
       [raw.market, raw.district, raw.state].filter(Boolean).join(', '),
+    latitude: raw.latitude != null ? Number(raw.latitude) : null,
+    longitude: raw.longitude != null ? Number(raw.longitude) : null,
     harvest_date: raw.harvest_date ?? raw.harvestDate ?? null,
     storage_available: raw.storage_available ?? raw.storageAvailable ?? false,
     description: raw.description ?? '',
@@ -103,6 +105,16 @@ export function normalizeMarketPrice(raw) {
     max_price: Number(raw.max_price ?? 0),
     modal_price: Number(raw.modal_price ?? 0),
     price_date: raw.price_date ?? null,
+    arrivals: Number(raw.arrivals ?? 0),
+    unit: raw.unit ?? '',
+    day_of_week: raw.day_of_week ?? null,
+    month: raw.month ?? null,
+    lag_1_price: raw.lag_1_price ?? null,
+    lag_7_price: raw.lag_7_price ?? null,
+    rolling_avg_7: raw.rolling_avg_7 ?? null,
+    rolling_avg_30: raw.rolling_avg_30 ?? null,
+    price_trend: raw.price_trend ?? null,
+    arrivals_trend: raw.arrivals_trend ?? null,
     source: raw.source ?? '',
   };
 }

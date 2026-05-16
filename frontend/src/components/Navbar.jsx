@@ -34,7 +34,12 @@ export default function Navbar() {
           <NavLink to="/" end className={linkClasses}>Home</NavLink>
           <NavLink to="/market-trends" className={linkClasses}>Market Trends</NavLink>
           {isAuthenticated && (
-            <NavLink to={dashboardPath} className={linkClasses}>Dashboard</NavLink>
+            <>
+              <NavLink to={dashboardPath} className={linkClasses}>Dashboard</NavLink>
+              <NavLink to="/logistics" className={linkClasses}>Logistics</NavLink>
+              {user?.role === 'buyer' && <NavLink to="/buyer/matches" className={linkClasses}>Matches</NavLink>}
+              <NavLink to="/messages" className={linkClasses}>💬 Messages</NavLink>
+            </>
           )}
           {isAuthenticated ? (
             <button onClick={handleLogout} className="btn-outline ml-2">Logout</button>
@@ -69,7 +74,14 @@ export default function Navbar() {
             <NavLink to="/" end className={linkClasses} onClick={() => setOpen(false)}>Home</NavLink>
             <NavLink to="/market-trends" className={linkClasses} onClick={() => setOpen(false)}>Market Trends</NavLink>
             {isAuthenticated && (
-              <NavLink to={dashboardPath} className={linkClasses} onClick={() => setOpen(false)}>Dashboard</NavLink>
+              <>
+                <NavLink to={dashboardPath} className={linkClasses} onClick={() => setOpen(false)}>Dashboard</NavLink>
+                <NavLink to="/logistics" className={linkClasses} onClick={() => setOpen(false)}>Logistics</NavLink>
+                {user?.role === 'buyer' && (
+                  <NavLink to="/buyer/matches" className={linkClasses} onClick={() => setOpen(false)}>Matches</NavLink>
+                )}
+                <NavLink to="/messages" className={linkClasses} onClick={() => setOpen(false)}>💬 Messages</NavLink>
+              </>
             )}
             <div className="pt-2">
               {isAuthenticated ? (

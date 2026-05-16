@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createCrop } from '../api/crops.js';
+import { SUPPORTED_COMMODITIES } from '../config/commodities.js';
 
 // Hackathon MVP: model is trained on a Maharashtra Potato dataset only.
 // Adding other crops would require retraining — restrict the UI so the demo
 // is honest about what the model actually supports.
-const cropOptions = ['Potato'];
-const districtOptions = ['Mumbai', 'Pune', 'Nashik', 'Solapur', 'Kolhapur'];
+const cropOptions = SUPPORTED_COMMODITIES;
+const districtOptions = ['Mumbai', 'Pune', 'Sangli', 'Satara', 'Kolhapur', 'Nashik'];
 const marketOptions = [
   'Mumbai-Onion & Potato Market APMC',
   'Pune-Market Yard',
@@ -106,7 +107,7 @@ export default function CropUpload() {
         and tell you how much profit you can expect.
       </p>
       <p className="mt-1 text-xs text-krishi-700">
-        🧪 MVP scope: model trained on 6 months of Maharashtra Potato APMC data.
+        MVP scope: model trained on cleaned Maharashtra Agmarknet mandi data.
       </p>
 
       <form onSubmit={handleSubmit} className="card mt-6 space-y-4">

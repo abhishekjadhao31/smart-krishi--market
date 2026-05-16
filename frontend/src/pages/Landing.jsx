@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import LivePotatoPrice from '../components/LivePotatoPrice.jsx';
+import LiveMandiPrice from '../components/LiveMandiPrice.jsx';
 
 const features = [
   {
@@ -47,22 +47,22 @@ export default function Landing() {
             </div>
             <div className="mt-8 grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold text-krishi-700">128</p>
-                <p className="text-xs text-gray-500">mandi data points</p>
+                <p className="text-2xl font-bold text-krishi-700">Live</p>
+                <p className="text-xs text-gray-500">mandi data</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-krishi-700">6 mo</p>
                 <p className="text-xs text-gray-500">price history</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-krishi-700">1</p>
-                <p className="text-xs text-gray-500">commodity (Potato)</p>
+                <p className="text-2xl font-bold text-krishi-700">10</p>
+                <p className="text-xs text-gray-500">commodities</p>
               </div>
             </div>
           </div>
           <div className="relative flex items-center justify-center">
             <div className="w-full max-w-md">
-              <LivePotatoPrice />
+              <LiveMandiPrice commodity="Potato" district="Mumbai" />
               <p className="mt-2 text-center text-[11px] text-gray-500">
                 Live daily price feed via data.gov.in · refreshes every 10 min.
               </p>

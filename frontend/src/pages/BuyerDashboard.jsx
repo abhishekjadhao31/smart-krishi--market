@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import AnalyticsCard from '../components/AnalyticsCard.jsx';
 import CropCard from '../components/CropCard.jsx';
+import SendMessageModal from '../components/SendMessageModal.jsx';
 import Loader from '../components/Loader.jsx';
 import { listCrops } from '../api/crops.js';
 import { searchForBuyer } from '../api/buyers.js';
@@ -12,6 +14,8 @@ export default function BuyerDashboard() {
   const [filters, setFilters] = useState({ crop: '', location: '', maxPrice: '' });
   const [crops, setCrops] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCrop, setSelectedCrop] = useState(null);
+  const [messageModal, setMessageModal] = useState(false);
 
   const fetchCrops = async (payload = {}) => {
     setLoading(true);
@@ -37,6 +41,11 @@ export default function BuyerDashboard() {
     fetchCrops(filters);
   };
 
+  const openMessage = (crop) => {
+    setSelectedCrop(crop);
+    setMessageModal(true);
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div>
@@ -50,6 +59,11 @@ export default function BuyerDashboard() {
         <AnalyticsCard label="Available listings" value={crops.length} />
         <AnalyticsCard label="Active farmers" value="86" accent="soil" />
         <AnalyticsCard label="AI matches today" value="9" accent="amber" />
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Link to="/buyer/matches" className="btn-outline">View matches</Link>
+        <Link to="/logistics" className="btn-primary">Plan transport</Link>
       </div>
 
       <form onSubmit={handleSearch} className="card mt-6 grid gap-3 sm:grid-cols-4">
@@ -79,11 +93,51 @@ export default function BuyerDashboard() {
         ) : (
           <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {crops.map((c) => (
-              <CropCard key={c.id} crop={c} actionLabel="Contact farmer" actionTo={`/buyer`} />
+              <div key={c.id} className="card flex flex-col">
+                {c.image_url && (
+                  <img src={c.image_url} alt={c.crop_name} className="h-32 w-full object-cover rounded-md" />
+                )}
+                <div className="flex-1 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="font-bold text-krishi-800">{c.crop_name}</h3>
+                    <Link to={`/crops/${c.id}`} className="text-xs font-medium text-krishi-700 hover:text-krishi-800">Details</Link>
+                  </div>
+                  {c.variety && <p className="text-xs text-gray-500">{c.variety}</p>}
+                  <p className="text-sm text-gray-600">
+                    {c.farmer_name || 'Unknown farmer'}
+                    {c.district && ` • ${c.district}`}
+                  </p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-lg font-semibold text-krishi-700">
+                      ₹{c.price_per_kg ? c.price_per_kg.toFixed(0) : '—'}/kg
+                    </span>
+                    <span className="text-xs text-gray-500">{c.quantity_kg} kg</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => openMessage(c)}
+                  className="btn-primary mt-3 w-full text-sm"
+                >
+                  💬 Contact Farmer
+                </button>
+                <Link to={`/logistics?cropId=${c.id}`} className="btn-outline mt-2 w-full text-sm">🚚 Transport</Link>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Message Modal */}
+      {messageModal && selectedCrop && (
+        <SendMessageModal
+          recipientId={selectedCrop.farmer_id}
+          recipientName={selectedCrop.farmer_name}
+          cropId={selectedCrop.id}
+          cropName={selectedCrop.crop_name}
+          onClose={() => setMessageModal(false)}
+          onSuccess={() => alert('✅ Message sent to ' + selectedCrop.farmer_name)}
+        />
+      )}
     </div>
   );
 }

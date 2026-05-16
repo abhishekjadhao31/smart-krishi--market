@@ -9,7 +9,11 @@ import FarmerDashboard from './pages/FarmerDashboard.jsx';
 import BuyerDashboard from './pages/BuyerDashboard.jsx';
 import CropUpload from './pages/CropUpload.jsx';
 import Prediction from './pages/Prediction.jsx';
+import CropListing from './pages/CropListing.jsx';
+import MatchResults from './pages/MatchResults.jsx';
+import LogisticsDashboard from './pages/LogisticsDashboard.jsx';
 import MarketTrends from './pages/MarketTrends.jsx';
+import Messages from './pages/Messages.jsx';
 import NotFound from './pages/NotFound.jsx';
 
 export default function App() {
@@ -57,9 +61,41 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/crops/:id"
+            element={
+              <ProtectedRoute>
+                <CropListing />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/buyer/matches"
+            element={
+              <ProtectedRoute role="buyer">
+                <MatchResults />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/logistics"
+            element={
+              <ProtectedRoute>
+                <LogisticsDashboard />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Shared */}
           <Route path="/market-trends" element={<MarketTrends />} />
+          <Route
+            path="/messages"
+            element={
+              <ProtectedRoute>
+                <Messages />
+              </ProtectedRoute>
+            }
+          />
 
           <Route path="/404" element={<NotFound />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
