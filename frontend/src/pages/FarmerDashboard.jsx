@@ -100,7 +100,7 @@ export default function FarmerDashboard() {
           <h1 className="text-2xl font-bold text-krishi-900">
             Namaste, {user?.name?.split(' ')[0] || 'Farmer'} 👋
           </h1>
-          <p className="text-sm text-gray-600">Here's how your crops are performing today.</p>
+          <p className="text-sm text-gray-600">Your listings, market signals, and next actions are in one place.</p>
         </div>
         <Link to="/farmer/upload" className="btn-primary">+ List a new crop</Link>
       </div>
@@ -166,10 +166,10 @@ export default function FarmerDashboard() {
           )}
         </div>
         <div className="card">
-          <h3 className="text-sm font-semibold text-gray-700">How predictions work</h3>
+          <h3 className="text-sm font-semibold text-gray-700">Forecast insight</h3>
           <p className="mt-2 text-sm text-gray-600">
-            We train an XGBoost regressor on cleaned Maharashtra Agmarknet APMC data.
-            List a crop to see a 7-day forecast and a profit projection for your quantity.
+            Price forecasts are built from cleaned Maharashtra mandi data plus weather
+            history, so you can compare the current market with the next few days.
           </p>
           <Link to="/market-trends" className="btn-outline mt-4 w-full">Explore trends</Link>
         </div>

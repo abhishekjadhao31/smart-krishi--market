@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import Loader from '../components/Loader.jsx';
 import { getCrop, predictForCrop } from '../api/crops.js';
-import SendMessageModal from '../components/SendMessageModal.jsx';
+import { createConversation } from '../api/conversations.js';
 
 export default function CropListing() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [crop, setCrop] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showMessage, setShowMessage] = useState(false);
   const [prediction, setPrediction] = useState(null);
   const [predicting, setPredicting] = useState(false);
+  const [contacting, setContacting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -40,6 +41,22 @@ export default function CropListing() {
       setError(err?.response?.data || { message: err.message });
     } finally {
       setPredicting(false);
+    }
+  };
+
+  const handleContactFarmer = async () => {
+    if (!crop) return;
+    try {
+      setContacting(true);
+      const { data } = await createConversation({
+        farmerId: crop.farmer_id,
+        listingId: crop.id,
+      });
+      navigate(`/messages?conversationId=${data.data.id}`);
+    } catch (err) {
+      setError(err?.response?.data || { message: err.message || 'Could not start conversation' });
+    } finally {
+      setContacting(false);
     }
   };
 
@@ -73,7 +90,9 @@ export default function CropListing() {
             </div>
 
             <div className="mt-4 flex gap-2">
-              <button className="btn-primary" onClick={() => setShowMessage(true)}>💬 Contact Farmer</button>
+              <button className="btn-primary" onClick={handleContactFarmer} disabled={contacting}>
+                {contacting ? 'Opening...' : 'Contact Farmer'}
+              </button>
               <Link to={`/logistics?cropId=${crop.id}`} className="btn-outline">🚚 Plan transport</Link>
               <button className="btn-outline" onClick={handlePredict} disabled={predicting}>{predicting ? 'Predicting…' : 'Run prediction'}</button>
             </div>
@@ -87,17 +106,6 @@ export default function CropListing() {
           </div>
         </div>
       </div>
-
-      {showMessage && (
-        <SendMessageModal
-          recipientId={crop.farmer_id}
-          recipientName={crop.farmer_name}
-          cropId={crop.id}
-          cropName={crop.crop_name}
-          onClose={() => setShowMessage(false)}
-          onSuccess={() => { setShowMessage(false); alert('Message sent'); }}
-        />
-      )}
     </div>
   );
 }

@@ -32,6 +32,7 @@ export default function Navbar() {
         {/* Desktop nav */}
         <nav className="hidden items-center gap-1 md:flex">
           <NavLink to="/" end className={linkClasses}>Home</NavLink>
+          <NavLink to="/assistant" className={linkClasses}>AI Assistant</NavLink>
           <NavLink to="/market-trends" className={linkClasses}>Market Trends</NavLink>
           {isAuthenticated && (
             <>
@@ -72,6 +73,7 @@ export default function Navbar() {
         <div className="border-t border-krishi-100 bg-white md:hidden">
           <div className="space-y-1 px-4 py-3">
             <NavLink to="/" end className={linkClasses} onClick={() => setOpen(false)}>Home</NavLink>
+            <NavLink to="/assistant" className={linkClasses} onClick={() => setOpen(false)}>AI Assistant</NavLink>
             <NavLink to="/market-trends" className={linkClasses} onClick={() => setOpen(false)}>Market Trends</NavLink>
             {isAuthenticated && (
               <>

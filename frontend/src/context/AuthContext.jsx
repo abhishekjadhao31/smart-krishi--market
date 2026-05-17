@@ -6,17 +6,60 @@ const AuthContext = createContext(null);
 const TOKEN_KEY = 'skm_token';
 const USER_KEY = 'skm_user';
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem(USER_KEY);
+function safeJsonParse(raw) {
+  try {
     return raw ? JSON.parse(raw) : null;
-  });
+  } catch {
+    return null;
+  }
+}
+
+function decodeJwtPayload(token) {
+  if (!token) return null;
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
+    return JSON.parse(window.atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+function hydrateUserFromStorage() {
+  const storedUser = safeJsonParse(localStorage.getItem(USER_KEY));
+  const storedToken = localStorage.getItem(TOKEN_KEY);
+  const tokenUser = decodeJwtPayload(storedToken);
+  if (!tokenUser) return storedUser;
+
+  return {
+    ...(storedUser || {}),
+    id: storedUser?.id ?? tokenUser.sub,
+    email: storedUser?.email ?? tokenUser.email,
+    role: tokenUser.role,
+  };
+}
+
+export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
+  const [user, setUser] = useState(hydrateUserFromStorage);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (token) localStorage.setItem(TOKEN_KEY, token);
     else localStorage.removeItem(TOKEN_KEY);
+  }, [token]);
+
+  useEffect(() => {
+    const tokenUser = decodeJwtPayload(token);
+    if (!tokenUser) return;
+    setUser((current) => ({
+      ...(current || {}),
+      id: current?.id ?? tokenUser.sub,
+      email: current?.email ?? tokenUser.email,
+      role: tokenUser.role,
+    }));
   }, [token]);
 
   useEffect(() => {

@@ -78,6 +78,23 @@ export function normalizePrediction(raw) {
           date: f.date,
           price: Number(f.price ?? 0),
           confidence: Number(f.confidence ?? 0),
+          lower: f.lowerPrice != null ? Number(f.lowerPrice) : f.lower_price != null ? Number(f.lower_price) : null,
+          upper: f.upperPrice != null ? Number(f.upperPrice) : f.upper_price != null ? Number(f.upper_price) : null,
+        }))
+      : [],
+    factors: Array.isArray(p.factors)
+      ? p.factors.map((f) => ({
+          date: f.date,
+          kind: f.kind ?? 'history',
+          price: f.price != null ? Number(f.price) : null,
+          arrivals: f.arrivals != null ? Number(f.arrivals) : null,
+          temp_avg_c: f.tempAvgC ?? f.temp_avg_c ?? null,
+          temp_min_c: f.tempMinC ?? f.temp_min_c ?? null,
+          temp_max_c: f.tempMaxC ?? f.temp_max_c ?? null,
+          rainfall_mm: f.rainfallMm ?? f.rainfall_mm ?? null,
+          humidity_pct: f.humidityPct ?? f.humidity_pct ?? null,
+          wind_kmph: f.windKmph ?? f.wind_kmph ?? null,
+          weather_label: f.weatherLabel ?? f.weather_label ?? '',
         }))
       : [],
     trend: Array.isArray(p.trend)
@@ -87,6 +104,8 @@ export function normalizePrediction(raw) {
           predicted: t.predicted ?? null,
         }))
       : [],
+    outlook: p.outlook ?? null,
+    diagnostics: p.diagnostics ?? null,
     metrics: p.metrics ?? {},
   };
 }

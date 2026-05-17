@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
+import AssistantFab from './components/AssistantFab.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Landing from './pages/Landing.jsx';
 import Login from './pages/Login.jsx';
@@ -11,7 +12,9 @@ import CropUpload from './pages/CropUpload.jsx';
 import Prediction from './pages/Prediction.jsx';
 import CropListing from './pages/CropListing.jsx';
 import MatchResults from './pages/MatchResults.jsx';
+import MatchSearch from './pages/MatchSearch.jsx';
 import LogisticsDashboard from './pages/LogisticsDashboard.jsx';
+import Assistant from './pages/Assistant.jsx';
 import MarketTrends from './pages/MarketTrends.jsx';
 import Messages from './pages/Messages.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -78,6 +81,14 @@ export default function App() {
             }
           />
           <Route
+            path="/buyer/search"
+            element={
+              <ProtectedRoute role="buyer">
+                <MatchSearch />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/logistics"
             element={
               <ProtectedRoute>
@@ -87,6 +98,7 @@ export default function App() {
           />
 
           {/* Shared */}
+          <Route path="/assistant" element={<Assistant />} />
           <Route path="/market-trends" element={<MarketTrends />} />
           <Route
             path="/messages"
@@ -102,6 +114,7 @@ export default function App() {
         </Routes>
       </main>
       <Footer />
+      <AssistantFab />
     </div>
   );
 }

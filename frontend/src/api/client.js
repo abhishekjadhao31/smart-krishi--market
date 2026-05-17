@@ -29,6 +29,16 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+    if (
+      err.response?.status === 403 &&
+      String(err.response?.data?.message || '').startsWith('Requires role:')
+    ) {
+      localStorage.removeItem('skm_token');
+      localStorage.removeItem('skm_user');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
     return Promise.reject(err);
   }
 );

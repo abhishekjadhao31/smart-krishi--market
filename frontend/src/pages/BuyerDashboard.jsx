@@ -1,21 +1,21 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AnalyticsCard from '../components/AnalyticsCard.jsx';
-import CropCard from '../components/CropCard.jsx';
-import SendMessageModal from '../components/SendMessageModal.jsx';
 import Loader from '../components/Loader.jsx';
 import { listCrops } from '../api/crops.js';
 import { searchForBuyer } from '../api/buyers.js';
+import { createConversation } from '../api/conversations.js';
 import { extractCropList } from '../utils/normalize.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function BuyerDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState({ crop: '', location: '', maxPrice: '' });
   const [crops, setCrops] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCrop, setSelectedCrop] = useState(null);
-  const [messageModal, setMessageModal] = useState(false);
+  const [contactingId, setContactingId] = useState(null);
+  const [contactError, setContactError] = useState('');
 
   const fetchCrops = async (payload = {}) => {
     setLoading(true);
@@ -41,9 +41,20 @@ export default function BuyerDashboard() {
     fetchCrops(filters);
   };
 
-  const openMessage = (crop) => {
-    setSelectedCrop(crop);
-    setMessageModal(true);
+  const openConversation = async (crop) => {
+    setContactingId(crop.id);
+    setContactError('');
+    try {
+      const { data } = await createConversation({
+        farmerId: crop.farmer_id,
+        listingId: crop.id,
+      });
+      navigate(`/messages?conversationId=${data.data.id}`);
+    } catch (err) {
+      setContactError(err.response?.data?.message || 'Could not start conversation.');
+    } finally {
+      setContactingId(null);
+    }
   };
 
   return (
@@ -86,6 +97,11 @@ export default function BuyerDashboard() {
 
       <div className="mt-8">
         <h2 className="text-lg font-semibold text-krishi-800">Recommended listings</h2>
+        {contactError && (
+          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {contactError}
+          </div>
+        )}
         {loading ? (
           <Loader label="Finding the best matches..." />
         ) : crops.length === 0 ? (
@@ -115,10 +131,11 @@ export default function BuyerDashboard() {
                   </div>
                 </div>
                 <button
-                  onClick={() => openMessage(c)}
+                  onClick={() => openConversation(c)}
                   className="btn-primary mt-3 w-full text-sm"
+                  disabled={contactingId === c.id}
                 >
-                  💬 Contact Farmer
+                  {contactingId === c.id ? 'Opening...' : 'Contact Farmer'}
                 </button>
                 <Link to={`/logistics?cropId=${c.id}`} className="btn-outline mt-2 w-full text-sm">🚚 Transport</Link>
               </div>
@@ -126,18 +143,6 @@ export default function BuyerDashboard() {
           </div>
         )}
       </div>
-
-      {/* Message Modal */}
-      {messageModal && selectedCrop && (
-        <SendMessageModal
-          recipientId={selectedCrop.farmer_id}
-          recipientName={selectedCrop.farmer_name}
-          cropId={selectedCrop.id}
-          cropName={selectedCrop.crop_name}
-          onClose={() => setMessageModal(false)}
-          onSuccess={() => alert('✅ Message sent to ' + selectedCrop.farmer_name)}
-        />
-      )}
     </div>
   );
 }

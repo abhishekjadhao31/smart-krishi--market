@@ -110,8 +110,8 @@ export default function MarketTrends() {
         <div>
           <h1 className="text-2xl font-bold text-krishi-900">Market Trends</h1>
           <p className="text-sm text-gray-600">
-            Live mandi prices from <code className="rounded bg-krishi-100 px-1">/api/market-prices</code> ·{' '}
-            {allRows.length} rows · Source: Agmarknet (Maharashtra)
+            Live mandi prices, trend direction, and district filters for Maharashtra markets.
+            {allRows.length > 0 ? ` ${allRows.length} rows loaded.` : ''}
           </p>
         </div>
       </div>
@@ -120,7 +120,7 @@ export default function MarketTrends() {
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
           <p className="mt-1 text-xs text-red-500">
-            Run the mandi fetch, clean, and seed pipeline in the backend folder.
+            Refresh the mandi feed and re-run the clean/seed pipeline from the backend scripts.
           </p>
         </div>
       )}
@@ -177,7 +177,7 @@ export default function MarketTrends() {
 
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <AnalyticsCard
-              label="Latest modal price"
+              label="Latest price"
               value={latest ? `₹ ${latest.price.toLocaleString()} / qtl` : '—'}
               hint={latest ? `as of ${fmtDate(latest.rawDate)}` : ''}
             />
@@ -187,7 +187,7 @@ export default function MarketTrends() {
               hint={district ? `for ${district}` : 'across all districts'}
               accent="soil"
             />
-            <AnalyticsCard label="Trend" value={trendLabel} accent="amber" />
+            <AnalyticsCard label="Direction" value={trendLabel} accent="amber" />
           </div>
 
           <div className="mt-6">

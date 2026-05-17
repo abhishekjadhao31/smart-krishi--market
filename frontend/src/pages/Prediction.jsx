@@ -112,6 +112,7 @@ export default function Prediction() {
   const confidence = prediction?.confidence ?? null;
   const recommendation = prediction?.recommendation || 'HOLD';
   const method = prediction?.method || 'stat';
+  const factors = prediction?.factors || [];
 
   // Best-day-to-sell fields from the ML service.
   const bestDay = prediction?.best_day ?? null;       // 0 = today
@@ -360,7 +361,7 @@ export default function Prediction() {
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           {trend.length > 0 ? (
-            <TrendChart data={trend} title="Historical & predicted" />
+            <TrendChart data={trend} title="Historical & predicted" outlook={prediction?.outlook} />
           ) : (
             <div className="card text-center text-sm text-gray-500">
               No history available for {crop?.crop_name} in {crop?.district || 'this district'} yet.
@@ -436,6 +437,61 @@ export default function Prediction() {
           )}
         </div>
       </div>
+
+      {factors.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold text-krishi-900">Price, arrival & weather factors</h2>
+          <p className="text-xs text-gray-500">
+            Recent mandi history and forecast-day weather inputs used by the model.
+          </p>
+          <div className="mt-3 overflow-x-auto rounded-lg border border-krishi-100 bg-white shadow-soft">
+            <table className="min-w-full divide-y divide-krishi-100 text-sm">
+              <thead className="bg-krishi-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-3 py-2">Date</th>
+                  <th className="px-3 py-2">Type</th>
+                  <th className="px-3 py-2">Price</th>
+                  <th className="px-3 py-2">Arrivals</th>
+                  <th className="px-3 py-2">Weather</th>
+                  <th className="px-3 py-2">Temp</th>
+                  <th className="px-3 py-2">Rain</th>
+                  <th className="px-3 py-2">Humidity</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-krishi-50">
+                {factors.slice(-21).map((f, idx) => (
+                  <tr key={`${f.kind}-${f.date}-${idx}`} className={f.kind === 'forecast' ? 'bg-amber-50/40' : ''}>
+                    <td className="whitespace-nowrap px-3 py-2 text-gray-700">{fmt(f.date)}</td>
+                    <td className="px-3 py-2">
+                      <span className={`badge ${f.kind === 'forecast' ? 'bg-amber-100 text-amber-700' : 'bg-krishi-100 text-krishi-700'}`}>
+                        {f.kind}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 font-medium text-gray-900">
+                      {f.price != null ? `Rs ${Math.round(f.price).toLocaleString()}/qtl` : '-'}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-gray-600">
+                      {f.arrivals != null ? `${Number(f.arrivals).toLocaleString()} MT` : '-'}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 capitalize text-gray-700">
+                      {f.weather_label || '-'}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-gray-600">
+                      {f.temp_avg_c != null ? `${Number(f.temp_avg_c).toFixed(1)} C` : '-'}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-gray-600">
+                      {f.rainfall_mm != null ? `${Number(f.rainfall_mm).toFixed(1)} mm` : '-'}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-gray-600">
+                      {f.humidity_pct != null ? `${Number(f.humidity_pct).toFixed(0)}%` : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

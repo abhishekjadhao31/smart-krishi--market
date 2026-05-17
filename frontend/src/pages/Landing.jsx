@@ -4,23 +4,28 @@ import LiveMandiPrice from '../components/LiveMandiPrice.jsx';
 const features = [
   {
     icon: '📈',
-    title: 'AI Price Prediction',
-    desc: 'XGBoost-powered forecasts based on mandi prices, arrivals, rainfall and demand.',
+    title: 'Price outlook',
+    desc: 'Forecasts built from mandi prices, arrivals, rainfall, and historical trends.',
+  },
+  {
+    icon: '💬',
+    title: 'AI assistant',
+    desc: 'Ask for sell-or-wait guidance, fair price checks, and negotiation tips.',
   },
   {
     icon: '🧠',
-    title: 'Sell or Hold Advice',
-    desc: 'Decision support: sell now, hold stock, or target a better market.',
+    title: 'Sell or hold guidance',
+    desc: 'Simple recommendations for when to sell, wait, or check a better market.',
   },
   {
     icon: '🤝',
-    title: 'Direct Buyer Match',
-    desc: 'Skip middlemen — connect with verified buyers directly.',
+    title: 'Buyer matching',
+    desc: 'Connect with buyers who are actively looking for your crop.',
   },
   {
     icon: '🚚',
-    title: 'Smarter Logistics',
-    desc: 'Recommendations factor in location and demand hotspots.',
+    title: 'Logistics support',
+    desc: 'Route and carrier suggestions that factor in location and demand.',
   },
 ];
 
@@ -32,31 +37,32 @@ export default function Landing() {
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24 lg:px-8">
           <div className="flex flex-col justify-center">
             <span className="badge mb-4 w-fit bg-krishi-200 text-krishi-800">
-              🌱 Hackathon MVP
+              🌱 Maharashtra market intelligence
             </span>
             <h1 className="text-4xl font-bold leading-tight text-krishi-900 sm:text-5xl">
-              Turn farm data into <span className="text-krishi-600">smarter profits</span>.
+              Turn farm data into <span className="text-krishi-600">better selling decisions</span>.
             </h1>
             <p className="mt-4 text-lg text-gray-700">
-              Smart Krishi Market uses AI to predict crop prices, recommend the right
-              moment to sell, and connect farmers directly with buyers.
+              Smart Krishi Market helps farmers read prices, compare nearby markets,
+              and choose the best time to sell with confidence.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link to="/register" className="btn-primary">Get Started Free</Link>
+              <Link to="/assistant" className="btn-ghost">Open AI Assistant</Link>
               <Link to="/market-trends" className="btn-outline">View Market Trends</Link>
             </div>
             <div className="mt-8 grid grid-cols-3 gap-4 text-center">
               <div>
                 <p className="text-2xl font-bold text-krishi-700">Live</p>
-                <p className="text-xs text-gray-500">mandi data</p>
+                <p className="text-xs text-gray-500">market prices</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-krishi-700">6 mo</p>
-                <p className="text-xs text-gray-500">price history</p>
+                <p className="text-xs text-gray-500">historic trend data</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-krishi-700">10</p>
-                <p className="text-xs text-gray-500">commodities</p>
+                <p className="text-2xl font-bold text-krishi-700">6</p>
+                <p className="text-xs text-gray-500">Maharashtra districts</p>
               </div>
             </div>
           </div>
@@ -64,7 +70,7 @@ export default function Landing() {
             <div className="w-full max-w-md">
               <LiveMandiPrice commodity="Potato" district="Mumbai" />
               <p className="mt-2 text-center text-[11px] text-gray-500">
-                Live daily price feed via data.gov.in · refreshes every 10 min.
+                Live price feed refreshed from Agmarknet-backed data.
               </p>
             </div>
           </div>

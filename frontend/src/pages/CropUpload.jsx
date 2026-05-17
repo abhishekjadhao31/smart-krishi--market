@@ -3,16 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { createCrop } from '../api/crops.js';
 import { SUPPORTED_COMMODITIES } from '../config/commodities.js';
 
-// Hackathon MVP: model is trained on a Maharashtra Potato dataset only.
-// Adding other crops would require retraining — restrict the UI so the demo
-// is honest about what the model actually supports.
 const cropOptions = SUPPORTED_COMMODITIES;
 const districtOptions = ['Mumbai', 'Pune', 'Sangli', 'Satara', 'Kolhapur', 'Nashik'];
-const marketOptions = [
-  'Mumbai-Onion & Potato Market APMC',
-  'Pune-Market Yard',
-  'Nashik APMC',
-];
+const marketOptionsByDistrict = {
+  Mumbai: ['Mumbai-Onion & Potato Market APMC', 'Mumbai APMC'],
+  Pune: ['Pune-Market Yard', 'Pune APMC'],
+  Sangli: ['Sangli APMC', 'Sangli Market Yard'],
+  Satara: ['Satara APMC', 'Satara Market Yard'],
+  Kolhapur: ['Kolhapur APMC', 'Kolhapur Market Yard'],
+  Nashik: ['Nashik APMC', 'Lasalgaon APMC'],
+};
 
 // Drop blanks, coerce numerics, leave strings as-is. The form already uses
 // the backend's camelCase field names so no key renaming is needed.
@@ -70,10 +70,21 @@ export default function CropUpload() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const marketOptions = marketOptionsByDistrict[form.district] || marketOptionsByDistrict.Mumbai;
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
+    setForm((f) => {
+      if (name === 'district') {
+        const nextMarkets = marketOptionsByDistrict[value] || [];
+        return {
+          ...f,
+          district: value,
+          market: nextMarkets.includes(f.market) ? f.market : nextMarkets[0] || '',
+        };
+      }
+      return { ...f, [name]: type === 'checkbox' ? checked : value };
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -103,11 +114,8 @@ export default function CropUpload() {
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-bold text-krishi-900">List a new crop</h1>
       <p className="text-sm text-gray-600">
-        Fill in the details — our AI will predict the price for the next 7 days
-        and tell you how much profit you can expect.
-      </p>
-      <p className="mt-1 text-xs text-krishi-700">
-        MVP scope: model trained on cleaned Maharashtra Agmarknet mandi data.
+        Add your crop details and location so the platform can estimate pricing,
+        show nearby market signals, and surface buyer interest.
       </p>
 
       <form onSubmit={handleSubmit} className="card mt-6 space-y-4">
