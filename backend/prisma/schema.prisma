@@ -32,6 +32,9 @@ model User {
   cropListings      CropListing[]
   sentMessages      Message[]     @relation("sentMessages")
   receivedMessages  Message[]     @relation("receivedMessages")
+  sentChatMessages  Message[]     @relation("chatSender")
+  buyerConversations Conversation[] @relation("buyerConversations")
+  farmerConversations Conversation[] @relation("farmerConversations")
   buyerRequests     BuyerRequest[]
   buyerProfile      BuyerProfile?
   matches           Match[]       @relation("farmerMatches")
@@ -75,6 +78,7 @@ model CropListing {
   // Relations
   farmer           User     @relation(fields: [farmerId], references: [id], onDelete: Cascade)
   messages         Message[]
+  conversations    Conversation[]
   matches          Match[]  @relation("listingMatches")
   transportBooking TransportBooking?
 
@@ -127,7 +131,49 @@ model MarketPrice {
   @@map("market_prices")
 }
 
+/// Daily weather data merged with mandi rows for ML training
+model WeatherDaily {
+  id          Int      @id @default(autoincrement())
+  weatherDate DateTime @map("weather_date")
+  district    String   @db.VarChar(100)
+  latitude    Decimal?
+  longitude   Decimal?
+  tempAvgC    Decimal? @map("temp_avg_c")
+  tempMinC    Decimal? @map("temp_min_c")
+  tempMaxC    Decimal? @map("temp_max_c")
+  rainfallMm  Decimal? @default(0) @map("rainfall_mm")
+  humidityPct Decimal? @map("humidity_pct")
+  windKmph    Decimal? @map("wind_kmph")
+  source      String?  @default("weather_csv") @db.VarChar(100)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([weatherDate, district])
+  @@index([weatherDate])
+  @@index([district])
+  @@map("weather_daily")
+}
+
 /// Messages between farmers and buyers
+model Conversation {
+  id        Int      @id @default(autoincrement())
+  buyerId   Int      @map("buyer_id")
+  farmerId  Int      @map("farmer_id")
+  listingId Int?     @map("listing_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  buyer     User     @relation("buyerConversations", fields: [buyerId], references: [id], onDelete: Cascade)
+  farmer    User     @relation("farmerConversations", fields: [farmerId], references: [id], onDelete: Cascade)
+  listing   CropListing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  messages  Message[]
+
+  @@unique([buyerId, farmerId, listingId], name: "conversations_buyer_farmer_listing_unique")
+  @@index([buyerId])
+  @@index([farmerId])
+  @@index([listingId])
+  @@map("conversations")
+}
+
 model Message {
   id        Int      @id @default(autoincrement())
   fromUserId Int     @map("from_user_id")
@@ -135,6 +181,9 @@ model Message {
   cropId    Int?     @map("crop_id")
   subject   String?  @db.VarChar(255)
   body      String
+  conversationId Int? @map("conversation_id")
+  senderId  Int?     @map("sender_id")
+  text      String?
   isRead    Boolean  @default(false) @map("is_read")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -143,10 +192,14 @@ model Message {
   from      User     @relation("sentMessages", fields: [fromUserId], references: [id], onDelete: Cascade)
   to        User     @relation("receivedMessages", fields: [toUserId], references: [id], onDelete: Cascade)
   crop      CropListing? @relation(fields: [cropId], references: [id], onDelete: SetNull)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender    User?    @relation("chatSender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([toUserId, isRead])
   @@index([fromUserId])
   @@index([cropId])
+  @@index([conversationId, createdAt])
+  @@index([senderId])
   @@index([createdAt(sort: Desc)])
   @@map("messages")
 }

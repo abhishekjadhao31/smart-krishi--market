@@ -25,8 +25,11 @@ const env = {
 
   ML_SERVICE_URL: process.env.ML_SERVICE_URL || 'http://localhost:8000',
   AGMARKNET_API_KEY: process.env.AGMARKNET_API_KEY || process.env.VITE_AGMARKNET_API_KEY || '',
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
 
   UPLOAD_DIR: process.env.UPLOAD_DIR || 'uploads',
+  RAW_DATA_DIR: process.env.RAW_DATA_DIR || 'database/raw',
   MAX_UPLOAD_SIZE_MB: parseInt(process.env.MAX_UPLOAD_SIZE_MB, 10) || 5,
 };
 

@@ -10,9 +10,13 @@
     "migrate:matching": "node src/utils/migrateMatching.js",
     "seed:prices": "node seeds/seedMarketPrices.js",
     "seed:logistics": "node seeds/seed_logistics.js",
-    "mandi:fetch": "python ../scripts/mandi/fetch_mandi_data.py",
-    "mandi:clean": "python ../scripts/mandi/clean_mandi_data.py",
-    "mandi:seed": "python ../scripts/mandi/seed_market_prices.py"
+    "mandi:fetch": "python ..\\scripts\\mandi\\fetch_mandi_data.py",
+    "mandi:clean": "..\\ml-service\\.venv\\Scripts\\python.exe ..\\scripts\\mandi\\clean_mandi_data.py",
+    "mandi:seed": "..\\ml-service\\.venv\\Scripts\\python.exe ..\\scripts\\mandi\\seed_market_prices.py",
+    "mandi:all": "..\\ml-service\\.venv\\Scripts\\python.exe ..\\scripts\\mandi\\clean_mandi_data.py && ..\\ml-service\\.venv\\Scripts\\python.exe ..\\scripts\\mandi\\seed_market_prices.py",
+    "weather:clean": "..\\ml-service\\.venv\\Scripts\\python.exe ..\\scripts\\weather\\clean_weather_data.py",
+    "weather:seed": "..\\ml-service\\.venv\\Scripts\\python.exe ..\\scripts\\weather\\seed_weather_data.py",
+    "weather:all": "..\\ml-service\\.venv\\Scripts\\python.exe ..\\scripts\\weather\\clean_weather_data.py && ..\\ml-service\\.venv\\Scripts\\python.exe ..\\scripts\\weather\\seed_weather_data.py"
   },
   "keywords": [
     "agriculture",

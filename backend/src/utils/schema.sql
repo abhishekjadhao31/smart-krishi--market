@@ -76,6 +76,42 @@ CREATE INDEX IF NOT EXISTS idx_prices_district  ON market_prices(district);
 CREATE INDEX IF NOT EXISTS idx_prices_market    ON market_prices(market);
 CREATE INDEX IF NOT EXISTS idx_prices_date      ON market_prices(price_date DESC);
 
+-- Daily weather data used as additional ML features for mandi price prediction.
+CREATE TABLE IF NOT EXISTS weather_daily (
+  id            SERIAL PRIMARY KEY,
+  weather_date  DATE NOT NULL,
+  district      VARCHAR(100) NOT NULL,
+  latitude      NUMERIC(10, 8),
+  longitude     NUMERIC(11, 8),
+  temp_avg_c    NUMERIC(8, 2),
+  temp_min_c    NUMERIC(8, 2),
+  temp_max_c    NUMERIC(8, 2),
+  rainfall_mm   NUMERIC(10, 2) DEFAULT 0,
+  humidity_pct  NUMERIC(8, 2),
+  wind_kmph      NUMERIC(8, 2),
+  source        VARCHAR(100) DEFAULT 'weather_csv',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (weather_date, district)
+);
+
+CREATE INDEX IF NOT EXISTS idx_weather_daily_date ON weather_daily(weather_date DESC);
+CREATE INDEX IF NOT EXISTS idx_weather_daily_district ON weather_daily(district);
+
+-- Simple buyer-farmer chat conversations
+CREATE TABLE IF NOT EXISTS conversations (
+  id              SERIAL PRIMARY KEY,
+  buyer_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  farmer_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  listing_id      INTEGER REFERENCES crops(id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT conversations_buyer_farmer_listing_unique UNIQUE (buyer_id, farmer_id, listing_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_buyer ON conversations(buyer_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_farmer ON conversations(farmer_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_listing ON conversations(listing_id);
+
 -- Messages table for farmer-buyer communication
 CREATE TABLE IF NOT EXISTS messages (
   id              SERIAL PRIMARY KEY,
@@ -84,14 +120,24 @@ CREATE TABLE IF NOT EXISTS messages (
   crop_id         INTEGER REFERENCES crops(id) ON DELETE SET NULL,
   subject         VARCHAR(255),
   body            TEXT NOT NULL,
+  conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  text            TEXT,
   is_read         BOOLEAN NOT NULL DEFAULT FALSE,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE IF EXISTS messages
+  ADD COLUMN IF NOT EXISTS conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS text TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_messages_to_user ON messages(to_user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_messages_from_user ON messages(from_user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_crop ON messages(crop_id);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at DESC);
 
 -- ============================================================================
@@ -278,3 +324,21 @@ CREATE TABLE IF NOT EXISTS matching_logs (
 
 CREATE INDEX IF NOT EXISTS idx_matching_logs_buyer_request_id ON matching_logs(buyer_request_id);
 CREATE INDEX IF NOT EXISTS idx_matching_logs_created_at ON matching_logs(created_at DESC);
+
+-- Negotiations table to track offers and counter-offers between buyer and farmer
+CREATE TABLE IF NOT EXISTS negotiations (
+  id                SERIAL PRIMARY KEY,
+  match_id          INTEGER REFERENCES matches(id) ON DELETE CASCADE,
+  from_user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  to_user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offer_price_per_kg NUMERIC(12,2) NOT NULL,
+  offer_quantity_kg NUMERIC(12,2) NOT NULL,
+  message           TEXT,
+  status            VARCHAR(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open','accepted','rejected','withdrawn')),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_negotiations_match_id ON negotiations(match_id);
+CREATE INDEX IF NOT EXISTS idx_negotiations_from_user ON negotiations(from_user_id);
+CREATE INDEX IF NOT EXISTS idx_negotiations_to_user ON negotiations(to_user_id);
