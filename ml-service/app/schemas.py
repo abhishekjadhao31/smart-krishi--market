@@ -15,7 +15,8 @@ class PredictRequest(BaseModel):
     market: Optional[str] = None
     quantityKg: Optional[float] = None
     harvestDate: Optional[str] = None
-    horizonDays: int = Field(7, ge=1, le=60)
+    # Reduce default horizon to keep forecasts conservative.
+    horizonDays: int = Field(5, ge=1, le=60)
 
 
 class TrendPoint(BaseModel):
@@ -31,6 +32,22 @@ class ForecastPoint(BaseModel):
     date: str               # ISO date for that day
     price: float            # predicted modal price (₹/qtl)
     confidence: float       # 0..1, decays as `day` grows
+    lowerPrice: Optional[float] = None
+    upperPrice: Optional[float] = None
+
+
+class FactorPoint(BaseModel):
+    date: str
+    kind: str               # history or forecast
+    price: Optional[float] = None
+    arrivals: Optional[float] = None
+    tempAvgC: Optional[float] = None
+    tempMinC: Optional[float] = None
+    tempMaxC: Optional[float] = None
+    rainfallMm: Optional[float] = None
+    humidityPct: Optional[float] = None
+    windKmph: Optional[float] = None
+    weatherLabel: Optional[str] = None
 
 
 class PredictResponse(BaseModel):
@@ -49,7 +66,12 @@ class PredictResponse(BaseModel):
     method: str
     horizonDays: int
     forecast: List[ForecastPoint] = []          # full per-day curve
+    factors: List[FactorPoint] = []             # price + arrivals + weather context
     trend: List[TrendPoint] = []
+    # User-friendly summary outlook: Rising / Falling / Stable
+    outlook: Optional[str] = None
+    # Optional diagnostics for debugging forecast generation (kept small)
+    diagnostics: Optional[dict] = None
     metrics: dict = {}
 
 

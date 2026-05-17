@@ -1,0 +1,137 @@
+{
+  "horizon": 1,
+  "results": {},
+  "meta": {
+    "rows": 12865
+  },
+  "Onion": {
+    "Pune": {
+      "n": 1234,
+      "rmse": 200.06,
+      "directional_accuracy_pct": 46.55
+    },
+    "Nashik": {
+      "n": 2527,
+      "rmse": 225.14,
+      "directional_accuracy_pct": 27.59
+    },
+    "Mumbai": {
+      "n": 134,
+      "rmse": 90.36,
+      "directional_accuracy_pct": 25.86
+    },
+    "Satara": {
+      "n": 500,
+      "rmse": 281.35,
+      "directional_accuracy_pct": 27.59
+    },
+    "Sangli": {
+      "n": 220,
+      "rmse": 125.89,
+      "directional_accuracy_pct": 25.86
+    }
+  },
+  "Wheat": {
+    "Pune": {
+      "n": 216,
+      "rmse": 1543.73,
+      "directional_accuracy_pct": 27.59
+    },
+    "Nashik": {
+      "n": 900,
+      "rmse": 86.16,
+      "directional_accuracy_pct": 17.24
+    },
+    "Mumbai": {
+      "n": 134,
+      "rmse": 158.46,
+      "directional_accuracy_pct": 27.59
+    },
+    "Satara": {
+      "n": 47,
+      "rmse": 192.55,
+      "directional_accuracy_pct": 44.74
+    },
+    "Sangli": {
+      "n": 141,
+      "rmse": 171.64,
+      "directional_accuracy_pct": 17.24
+    }
+  },
+  "Soyabean": {
+    "Pune": {
+      "n": 51,
+      "rmse": 262.78,
+      "directional_accuracy_pct": 23.81
+    },
+    "Nashik": {
+      "n": 684,
+      "rmse": 826.27,
+      "directional_accuracy_pct": 37.93
+    },
+    "Satara": {
+      "n": 30,
+      "rmse": 12.11,
+      "directional_accuracy_pct": 90.48
+    },
+    "Sangli": {
+      "n": 24,
+      "rmse": 351.8,
+      "directional_accuracy_pct": 33.33
+    }
+  },
+  "Tomato": {
+    "Pune": {
+      "n": 1060,
+      "rmse": 776.08,
+      "directional_accuracy_pct": 25.86
+    },
+    "Nashik": {
+      "n": 323,
+      "rmse": 561.82,
+      "directional_accuracy_pct": 20.69
+    },
+    "Mumbai": {
+      "n": 137,
+      "rmse": 280.82,
+      "directional_accuracy_pct": 36.21
+    },
+    "Satara": {
+      "n": 512,
+      "rmse": 554.42,
+      "directional_accuracy_pct": 32.76
+    },
+    "Sangli": {
+      "n": 145,
+      "rmse": 552.99,
+      "directional_accuracy_pct": 34.48
+    }
+  },
+  "Maize": {
+    "Pune": {
+      "n": 247,
+      "rmse": 577.25,
+      "directional_accuracy_pct": 31.03
+    },
+    "Nashik": {
+      "n": 1159,
+      "rmse": 124.17,
+      "directional_accuracy_pct": 31.03
+    },
+    "Mumbai": {
+      "n": 128,
+      "rmse": 84.38,
+      "directional_accuracy_pct": 79.31
+    },
+    "Satara": {
+      "n": 6,
+      "rmse": null,
+      "directional_accuracy_pct": null
+    },
+    "Sangli": {
+      "n": 94,
+      "rmse": 109.92,
+      "directional_accuracy_pct": 37.93
+    }
+  }
+}

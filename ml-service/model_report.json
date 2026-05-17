@@ -1,0 +1,18 @@
+{
+  "trained_at": "2026-05-17T00:28:03.403924",
+  "train_start": "2025-11-07",
+  "train_end": "2026-04-10",
+  "holdout_start": "2026-04-10",
+  "holdout_end": "2026-05-16",
+  "metrics": {
+    "train_rows": 10292,
+    "holdout_rows": 2573,
+    "train_mae": 19.98,
+    "train_rmse": 33.32,
+    "holdout_mae": 39.45,
+    "holdout_rmse": 118.77,
+    "holdout_r2": 0.9935,
+    "holdout_directional_accuracy_pct": 95.49
+  },
+  "uses_weather": true
+}

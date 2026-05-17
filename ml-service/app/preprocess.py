@@ -21,11 +21,27 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from .districts import (
+    canonicalize_district,
+    canonicalize_market,
+    infer_district_from_coords,
+    infer_district_from_market,
+)
+
 ML_ROOT = Path(__file__).resolve().parent.parent
 REPO_ROOT = ML_ROOT.parent
 LEGACY_DATA_FILE = ML_ROOT / "data" / "maharashtra_prices.csv"
 CLEANED_DATA_FILE = REPO_ROOT / "database" / "cleaned" / "maharashtra_mandi_cleaned.csv"
+WEATHER_DATA_FILE = REPO_ROOT / "database" / "cleaned" / "maharashtra_weather_daily.csv"
 DATA_FILE = CLEANED_DATA_FILE if CLEANED_DATA_FILE.exists() else LEGACY_DATA_FILE
+WEATHER_FEATURES = [
+    "temp_avg_c",
+    "temp_min_c",
+    "temp_max_c",
+    "rainfall_mm",
+    "humidity_pct",
+    "wind_kmph",
+]
 
 
 def _to_number(v) -> Optional[float]:
@@ -54,6 +70,86 @@ def _to_date(v) -> Optional[pd.Timestamp]:
         return pd.Timestamp(s)
     except Exception:  # noqa: BLE001
         return None
+
+
+def load_weather(csv_path: Optional[Path] = None) -> pd.DataFrame:
+    """Read the cleaned daily weather CSV, if it exists."""
+    csv_path = csv_path or WEATHER_DATA_FILE
+    if not csv_path.exists():
+        return pd.DataFrame()
+
+    df = pd.read_csv(csv_path)
+    df.columns = [c.strip() for c in df.columns]
+    rename = {
+        "weather_date": "date",
+        "Date": "date",
+        "District": "district",
+        "Latitude": "latitude",
+        "Longitude": "longitude",
+    }
+    df = df.rename(columns=rename)
+    if "date" not in df.columns or "district" not in df.columns:
+        raise ValueError("Weather CSV must contain date and district columns")
+
+    df["date"] = df["date"].map(_to_date)
+    df["district"] = df["district"].map(canonicalize_district)
+    if "market" in df.columns:
+        df["market"] = df["market"].map(canonicalize_market)
+    if "latitude" in df.columns and "longitude" in df.columns:
+        missing = df["district"].eq("")
+        if missing.any():
+            inferred = df.loc[missing].apply(
+                lambda row: infer_district_from_coords(row.get("latitude"), row.get("longitude")),
+                axis=1,
+            )
+            df.loc[missing, "district"] = inferred
+    for col in WEATHER_FEATURES:
+        if col not in df.columns:
+            df[col] = np.nan
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df = df.dropna(subset=["date", "district"])
+    if df.empty:
+        return df
+
+    grouped = (
+        df.groupby(["date", "district"], as_index=False)[WEATHER_FEATURES]
+        .mean(numeric_only=True)
+        .sort_values(["date", "district"])
+    )
+    return grouped
+
+
+def merge_weather(mandi_df: pd.DataFrame, weather_df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+    """Attach district-level daily weather features to mandi rows."""
+    weather_df = load_weather() if weather_df is None else weather_df
+    out = mandi_df.copy()
+    for col in WEATHER_FEATURES:
+        if col not in out.columns:
+            out[col] = np.nan
+    if weather_df.empty:
+        return out
+
+    out["_weather_date"] = pd.to_datetime(out["arrival_date"], errors="coerce").dt.normalize()
+    out["district"] = out["district"].map(canonicalize_district)
+    if "market" in out.columns:
+        out["market"] = out["market"].map(canonicalize_market)
+    weather = weather_df.copy()
+    weather["_weather_date"] = pd.to_datetime(weather["date"], errors="coerce").dt.normalize()
+    weather["district"] = weather["district"].map(canonicalize_district)
+
+    out = out.merge(
+        weather[["_weather_date", "district", *WEATHER_FEATURES]],
+        on=["_weather_date", "district"],
+        how="left",
+        suffixes=("", "_weather"),
+    )
+    for col in WEATHER_FEATURES:
+        weather_col = f"{col}_weather"
+        if weather_col in out.columns:
+            out[col] = out[weather_col].combine_first(out[col])
+            out = out.drop(columns=[weather_col])
+    return out.drop(columns=["_weather_date"])
 
 
 def load_raw(csv_path: Optional[Path] = None) -> pd.DataFrame:
@@ -108,9 +204,14 @@ def load_raw(csv_path: Optional[Path] = None) -> pd.DataFrame:
     for text_col in ("state", "district", "market", "commodity", "variety"):
         if text_col in df.columns:
             df[text_col] = df[text_col].fillna("").astype(str).str.strip()
+    df["district"] = df.apply(
+        lambda row: canonicalize_district(row.get("district")) or infer_district_from_market(row.get("market")),
+        axis=1,
+    )
+    df["market"] = df["market"].map(canonicalize_market)
     if df.empty and csv_path == CLEANED_DATA_FILE and LEGACY_DATA_FILE.exists():
         return load_raw(LEGACY_DATA_FILE)
-    df = df.reset_index(drop=True)
+    df = merge_weather(df).reset_index(drop=True)
     return df
 
 
@@ -125,7 +226,22 @@ def build_target_encoders(df: pd.DataFrame) -> dict:
         "district": df.groupby("district")["modal_price"].mean().to_dict(),
         "market": df.groupby("market")["modal_price"].mean().to_dict(),
         "_global_mean": float(df["modal_price"].mean()),
+        "_weather_defaults": {},
+        "_weather_by_district": {},
     }
+    for col in WEATHER_FEATURES:
+        series = pd.to_numeric(df[col], errors="coerce") if col in df.columns else pd.Series(dtype=float)
+        default = float(series.median()) if not series.dropna().empty else 0.0
+        enc["_weather_defaults"][col] = default
+    if "district" in df.columns:
+        for district, group in df.groupby("district"):
+            enc["_weather_by_district"][district] = {}
+            for col in WEATHER_FEATURES:
+                series = pd.to_numeric(group[col], errors="coerce") if col in group.columns else pd.Series(dtype=float)
+                if series.dropna().empty:
+                    enc["_weather_by_district"][district][col] = enc["_weather_defaults"][col]
+                else:
+                    enc["_weather_by_district"][district][col] = float(series.tail(30).median())
     return enc
 
 
@@ -183,6 +299,15 @@ def build_features(
             out[col] = pd.to_numeric(df[col], errors="coerce").fillna(default)
         else:
             out[col] = default
+    weather_defaults = encoders.get("_weather_defaults", {})
+    weather_by_district = encoders.get("_weather_by_district", {})
+    districts = df.get("district", pd.Series("", index=df.index)).fillna("").astype(str)
+    for col in WEATHER_FEATURES:
+        fallback = districts.map(lambda d: weather_by_district.get(d, {}).get(col, weather_defaults.get(col, 0.0)))
+        if col in df.columns:
+            out[col] = pd.to_numeric(df[col], errors="coerce").fillna(fallback)
+        else:
+            out[col] = fallback
     return out, encoders, min_date
 
 
@@ -204,11 +329,13 @@ def filter_history(
             return cur.iloc[0:0].copy()
         cur = cur[m]
     if market:
-        m = cur["market"].str.lower().str.contains(market.strip().lower(), na=False)
+        market_text = canonicalize_market(market)
+        m = cur["market"].str.lower().str.contains(market_text.lower(), na=False)
         if m.any():
             cur = cur[m]
     if district:
-        m = cur["district"].str.lower() == district.strip().lower()
+        district_text = canonicalize_district(district)
+        m = cur["district"].str.lower() == district_text.lower()
         if m.any():
             cur = cur[m]
     return cur.sort_values("arrival_date").reset_index(drop=True)
